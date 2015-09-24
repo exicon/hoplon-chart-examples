@@ -65,6 +65,15 @@
 (with-init!
   )
 
+(defelem tooltip [{:keys [pos] :as attrs} kids]
+  ((div :class "ui small basic popup" (dissoc attrs :pos))
+   :class (cell= {:visible pos})
+   :css (cell-let
+          [[x y] pos]
+          (cell= {:left (str (+ x 20) "px")
+                  :top (str (- y 20) "px")}))
+   kids))
+
 (html
   (head
     (html-meta :name "viewport" :content "width=device-width, initial-scale=1.0")
@@ -96,33 +105,24 @@
 
               (let [chart-elem (div :class "ct-chart ct-octave")
                     chart (js/Chartist.Line. chart-elem chartist-data3)
-                    chart-points #(.find (js/$ chart-elem) ".ct-point")
                     tooltip-pos (cell nil)
                     tooltip-value (cell "")
-                    move-tooltip (fn []
-                                   (.on (chart-points) "mouseenter"
-                                        #(this-as point
-                                                  (reset! tooltip-pos
-                                                          [(.-offsetX %)
-                                                           (.-offsetY %)])
-                                                  (reset! tooltip-value
-                                                          (.attr (js/$ point) "ct:value"))))
-                                   (.on (chart-points) "mouseout"
-                                        #(reset! tooltip-pos nil)))
-                    tooltip ((div :class "ui small basic popup")
-                             :class (cell= {:visible tooltip-pos})
-                             :css (cell-let
-                                    [[x y] tooltip-pos]
-                                    (cell= {:left (str (+ x 20) "px")
-                                            :top (str (- y 20) "px")}))
-                             (text (str "x: " tooltip-value)))
-
-                    ]
+                    hook-tooltip (fn [data]
+                                   (when (= "point" (.-type data))
+                                     (data.element._node
+                                       :mouseenter #(do
+                                                      (reset! tooltip-pos
+                                                              [data.x data.y])
+                                                      (reset! tooltip-value
+                                                              data.value.y))
+                                       :mouseout #(reset! tooltip-pos nil))
+                                     (js/console.log (.-type data) data)))]
+                (.on chart "draw" hook-tooltip)
                 (spliced
                   (button "New data"
                           :click #(.update chart chartist-data2))
                   (button "Initial data"
                           :click #(.update chart chartist-data3))
-                  (button "Turn on tooltips" :click move-tooltip)
                   (chart-elem
-                    tooltip)))))))
+                    (tooltip :pos tooltip-pos
+                     (text (str "x: " tooltip-value))))))))))
