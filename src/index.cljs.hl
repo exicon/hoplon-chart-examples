@@ -1,0 +1,128 @@
+(page "index.html"
+      (:require
+        [cljsjs.c3]
+        [cljsjs.chartist]))
+
+(def chartist-data1
+  (clj->js
+    {:labels ["Mon", "Tue", "Wed", "Thu", "Fri"],
+     :series [[5, 2, 4, 2, 0]
+              [20, 15, 5, 33, 9]]}))
+
+(def empty-chartist
+  (clj->js
+    {:labels [""]
+     :series [[0]]}))
+
+(def chartist-data2
+  (clj->js
+    {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+     :series [[5, 2, 4, 2, 0]]}))
+
+(def chartist-data3
+  (clj->js
+    {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+     :series [{:name "Example Data"
+               :data [5, 2, 4, 2, 0]},
+              {:name "Example Data2"
+               :data [3, 8, 4, 1, 4]}]}))
+
+
+(defelem tooltip [])
+
+(defelem chart [attrs [chart-container]]
+  (let [minimal-data {:labels [""] :series [[0]]}]
+    (with-let [chart ((div :class "ct-chart ct-octave") attrs)]
+              #_(Chartist.Line. chart (clj->js minimal-data)))))
+
+(def c3-data1
+  (clj->js
+    {:bindto nil
+     :data
+     {:x "x",
+      ; :xFormat '%Y%m%d', ; 'xFormat' can be used as custom format of 'x'
+      :columns [["x", "2013-01-01", "2013-01-02", "2013-01-03", "2013-01-04", "2013-01-05", "2013-01-06"],
+                ; ["x", "20130101", "20130102", "20130103", "20130104", "20130105", "20130106"],
+                ["data1", 30, 200, 100, 400, 150, 250],
+                ["data2", 130, 340, 200, 500, 250, 350]]},
+     :axis {:x {:type "timeseries",
+                :tick {:format "%Y-%m-%d"}}}}))
+
+(def c3-data2
+  (clj->js
+    {:columns [["x", "2015-01-01", "2015-01-02", "2015-01-03", "2015-01-04", "2015-01-05", "2015-01-06"
+                "2015-02-01", "2015-02-02", "2015-02-03", "2015-02-04", "2015-02-05", "2015-02-06"],
+               ["data1", 60, 200, 100, 400, 150, 250, 30, 200, 100, 400, 150, 250],
+               ["data2", 160, 340, 200, 500, 250, 350, 30, 200, 100, 400, 150, 250]]}))
+
+(def c3-data3
+  (clj->js
+    {:columns  [["x", "2013-01-01", "2013-01-02", "2013-01-03", "2013-01-04", "2013-01-05", "2013-01-06"],
+                ; ["x", "20130101", "20130102", "20130103", "20130104", "20130105", "20130106"],
+                ["data1", 30, 200, 100, 400, 150, 250],
+                ["data2", 130, 340, 200, 500, 250, 350]]}))
+
+(with-init!
+  )
+
+(html
+  (head
+    (html-meta :name "viewport" :content "width=device-width, initial-scale=1.0")
+    (link :href "/semantic-ui.css" :rel "stylesheet")
+    (link :href "/chartist.min.css" :rel "stylesheet")
+    (link :href "/cljsjs/c3/common/c3.min.css" :rel "stylesheet")
+    (link :href "//cdn.jsdelivr.net/chartist.js/latest/chartist.min.css" :rel "stylesheet"))
+  (body
+    (div :class "ui segment"
+         (div :toggle false ($comment "C3 examples")
+
+              (h1 :class "ui header" "C3 example")
+
+              (let [chart (.generate js/c3 c3-data1)]
+                (spliced
+                  (.-element chart)
+                  (button "Load C3 chart data2"
+                          :click #(.load chart c3-data2))
+                  (button "Load C3 chart data3"
+                          :click #(.load chart c3-data3))))
+
+              (let [chart (.generate js/c3 c3-data1)]
+                (spliced
+                  (.-element chart))))
+
+         (div :toggle true ($comment "Chartist examples")
+
+              (h1 :class "ui header" "Chartist example")
+
+              (let [chart-elem (div :class "ct-chart ct-octave")
+                    chart (js/Chartist.Line. chart-elem chartist-data3)
+                    chart-points #(.find (js/$ chart-elem) ".ct-point")
+                    tooltip-pos (cell nil)
+                    tooltip-value (cell "")
+                    move-tooltip (fn []
+                                   (.on (chart-points) "mouseenter"
+                                        #(this-as point
+                                                  (reset! tooltip-pos
+                                                          [(.-offsetX %)
+                                                           (.-offsetY %)])
+                                                  (reset! tooltip-value
+                                                          (.attr (js/$ point) "ct:value"))))
+                                   (.on (chart-points) "mouseout"
+                                        #(reset! tooltip-pos nil)))
+                    tooltip ((div :class "ui small basic popup")
+                             :class (cell= {:visible tooltip-pos})
+                             :css (cell-let
+                                    [[x y] tooltip-pos]
+                                    (cell= {:left (str (+ x 20) "px")
+                                            :top (str (- y 20) "px")}))
+                             (text (str "x: " tooltip-value)))
+
+                    ]
+                (spliced
+                  (button "New data"
+                          :click #(.update chart chartist-data2))
+                  (button "Initial data"
+                          :click #(.update chart chartist-data3))
+                  (button "Turn on tooltips" :click move-tooltip)
+                  (chart-elem
+                    tooltip)))))))
