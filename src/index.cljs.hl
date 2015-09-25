@@ -1,7 +1,8 @@
 (page "index.html"
       (:require
         [cljsjs.c3]
-        [cljsjs.chartist]))
+        [cljsjs.chartist]
+        [clojure.set :refer [union difference]]))
 
 (def chartist-data1
   (clj->js
@@ -22,13 +23,51 @@
 (def chartist-data3
   (clj->js
     {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
-     :series [{:name "Example Data"
-               :data [5, 2, 4, 2, 0]},
-              {:name "Example Data2"
+     :series [{:name "HK"
+               :data [5, 2, 4, 2, 0]}
+              {:name "US"
                :data [3, 8, 4, 1, 4]}]}))
 
+(def chartist-opts
+  (clj->js
+    {:fullWidth true
+     :series {"Total" {:showArea true}}}))
 
-(defelem tooltip [])
+(defc chartist-data-example
+    {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+     :series [{:name "Total"
+               :data [8, 3, 8, 3, 7]}
+              {:name "US"
+               :data [3, 1, 1, 1, 4]}
+              {:name "AU"
+               :data [5, 2, 7, 2, 3]}]})
+
+(defn symmetric-difference [s1 s2]
+  (union (difference s1 s2) (difference s2 s1)))
+
+(defc= series-names (map (comp :series :name) chartist-data-example))
+
+(defc selected-data #{"Total"})
+(cell= (println "I selected: "selected-data))
+
+(defn pick-from [original selected]
+  (update-in original [:series]
+             #(filterv (fn [series] (selected (:name series))) %)))
+
+(defc= chartist-data-filtered
+  (pick-from chartist-data-example selected-data))
+
+(cell= (prn "Chartist Data Cell: " chartist-data-filtered))
+
+
+(defelem filter-buttons []
+  (let [button-names (mapv #(:name %) (:series @chartist-data-example))
+        debug (prn button-names)]
+    (loop-tpl :bindings [btn button-names]
+              ((div :class "ui small basic button")
+                   :click #(swap! selected-data symmetric-difference (conj #{} @btn))
+                   :class (cell= {:active (if (selected-data btn) true false)})
+                   btn))))
 
 (defelem chart [attrs [chart-container]]
   (let [minimal-data {:labels [""] :series [[0]]}]
@@ -62,15 +101,14 @@
                 ["data1", 30, 200, 100, 400, 150, 250],
                 ["data2", 130, 340, 200, 500, 250, 350]]}))
 
-(with-init!
-  )
 
 (defelem tooltip [{:keys [pos] :as attrs} kids]
-  ((div :class "ui small basic popup" (dissoc attrs :pos))
+  ((div :class "ui basic small popup" (dissoc attrs :pos))
    :class (cell= {:visible pos})
    :css (cell-let
           [[x y] pos]
           (cell= {:left (str (+ x 20) "px")
+                  :width "6em"
                   :top (str (- y 20) "px")}))
    kids))
 
@@ -102,9 +140,8 @@
          (div :toggle true ($comment "Chartist examples")
 
               (h1 :class "ui header" "Chartist example")
-
               (let [chart-elem (div :class "ct-chart ct-octave")
-                    chart (js/Chartist.Line. chart-elem chartist-data3)
+                    chart (js/Chartist.Line. chart-elem (clj->js @chartist-data-filtered))
                     tooltip-pos (cell nil)
                     tooltip-value (cell "")
                     hook-tooltip (fn [data]
@@ -114,15 +151,13 @@
                                                       (reset! tooltip-pos
                                                               [data.x data.y])
                                                       (reset! tooltip-value
-                                                              data.value.y))
-                                       :mouseout #(reset! tooltip-pos nil))
-                                     (js/console.log (.-type data) data)))]
+                                                              (str data.series.name ": " data.value.y)))
+                                       :mouseout #(reset! tooltip-pos nil))))
+                    update-chart (cell= (when chartist-data-filtered
+                                        (.update chart (clj->js chartist-data-filtered))))]
                 (.on chart "draw" hook-tooltip)
                 (spliced
-                  (button "New data"
-                          :click #(.update chart chartist-data2))
-                  (button "Initial data"
-                          :click #(.update chart chartist-data3))
                   (chart-elem
                     (tooltip :pos tooltip-pos
-                     (text (str "x: " tooltip-value))))))))))
+                     (span :class "ui header" (text tooltip-value))))
+                  (filter-buttons)))))))
