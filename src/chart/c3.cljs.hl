@@ -1,0 +1,45 @@
+(ns chart.c3
+  (:require
+    [cljsjs.c3]
+    [clojure.set :refer [union difference]]))
+
+(def c3-data1
+  (clj->js
+    {:bindto nil
+     :data
+     {:x "x",
+      ; :xFormat '%Y%m%d', ; 'xFormat' can be used as custom format of 'x'
+      :columns [["x", "2013-01-01", "2013-01-02", "2013-01-03", "2013-01-04", "2013-01-05", "2013-01-06"],
+                ; ["x", "20130101", "20130102", "20130103", "20130104", "20130105", "20130106"],
+                ["data1", 30, 200, 100, 400, 150, 250],
+                ["data2", 130, 340, 200, 500, 250, 350]]},
+     :axis {:x {:type "timeseries",
+                :tick {:format "%Y-%m-%d"}}}}))
+
+(def c3-data2
+  (clj->js
+    {:columns [["x", "2015-01-01", "2015-01-02", "2015-01-03", "2015-01-04", "2015-01-05", "2015-01-06"
+                "2015-02-01", "2015-02-02", "2015-02-03", "2015-02-04", "2015-02-05", "2015-02-06"],
+               ["data1", 60, 200, 100, 400, 150, 250, 30, 200, 100, 400, 150, 250],
+               ["data2", 160, 340, 200, 500, 250, 350, 30, 200, 100, 400, 150, 250]]}))
+
+(def c3-data3
+  (clj->js
+    {:columns  [["x", "2013-01-01", "2013-01-02", "2013-01-03", "2013-01-04", "2013-01-05", "2013-01-06"],
+                ; ["x", "20130101", "20130102", "20130103", "20130104", "20130105", "20130106"],
+                ["data1", 30, 200, 100, 400, 150, 250],
+                ["data2", 130, 340, 200, 500, 250, 350]]}))
+
+(defelem examples []
+  (spliced
+    (let [chart (.generate js/c3 c3-data1)]
+      (spliced
+        (.-element chart)
+        (button "Load C3 chart data2"
+                :click #(.load chart c3-data2))
+        (button "Load C3 chart data3"
+                :click #(.load chart c3-data3))))
+
+    (let [chart (.generate js/c3 c3-data1)]
+      (spliced
+        (.-element chart)))))

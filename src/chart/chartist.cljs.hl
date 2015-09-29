@@ -1,0 +1,134 @@
+(ns chart.chartist
+  (:require
+    [cljsjs.chartist]
+    [clojure.set :refer [union difference]]))
+
+(def chartist-data1
+  (clj->js
+    {:labels ["Mon", "Tue", "Wed", "Thu", "Fri"],
+     :series [[5, 2, 4, 2, 0]
+              [20, 15, 5, 33, 9]]}))
+
+(def empty-chartist
+  (clj->js
+    {:labels [""]
+     :series [[0]]}))
+
+(def chartist-data2
+  (clj->js
+    {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+     :series [[5, 2, 4, 2, 0]]}))
+
+(def chartist-data3
+  (clj->js
+    {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+     :series [{:name "HK"
+               :data [5, 2, 4, 2, 0]}
+              {:name "US"
+               :data [3, 8, 4, 1, 4]}]}))
+
+(def chartist-opts
+  (clj->js
+    {;:fullWidth true
+    	:width 480
+     :series {"Total" {:showArea true}}}))
+
+(defc chartist-data-example
+  {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+   :series [{:name "Total"
+             :data [8, 3, 8, 3, 7]}
+            {:name "US"
+             :data [3, 1, 1, 1, 4]}
+            {:name "AU"
+             :data [5, 2, 7, 2, 3]}]})
+
+(defn symmetric-difference [s1 s2]
+  (union (difference s1 s2) (difference s2 s1)))
+
+(defc selected-data #{"Total"})
+
+(defn pick-from [original selected]
+  (update-in original [:series]
+             #(filterv (fn [series] (selected (:name series))) %)))
+
+(defc= chartist-data-filtered
+  (pick-from chartist-data-example selected-data))
+
+(cell= (prn "Chartist Data Cell: " chartist-data-filtered))
+
+(defelem chart [attrs [chart-container]]
+  (let [minimal-data {:labels [""] :series [[0]]}]
+    (with-let [chart ((div :class "ct-chart ct-octave") attrs)]
+              #_(Chartist.Line. chart (clj->js minimal-data)))))
+
+(defelem tooltip [{:keys [pos] :as attrs} kids]
+  ((div :class "ui basic small popup" (dissoc attrs :pos))
+   :class (cell= {:visible pos})
+   :css (cell-let
+          [[x y] pos]
+          (cell= {:left (str (+ x 20) "px")
+                  :width "6em"
+                  :top (str (- y 20) "px")}))
+   kids))
+
+(def colors
+  (cycle
+    ["#d70206"
+     "#f05b4f"
+     "#f4c63d"
+     "#d17905"
+     "#453d3f"
+     "#59922b"
+     "#0544d3"
+     "#6b0392"
+     "#f05b4f"
+     "#dda458"
+     "#eacf7d"
+     "#86797d"
+     "#b2c326"
+     "#6188e2"
+     "#a748ca"]))
+
+(def countries
+  ["Total" "US" "AU"])
+
+(defn country-color [country]
+  ((into {} (map vector countries colors)) country "grey"))
+
+(defelem examples []
+  (let [chart-elem (div :class "ct-chart ct-octave")
+        chart (js/Chartist.Line. chart-elem (clj->js @chartist-data-filtered))
+        countries (cell= (map :name (:series chartist-data-example)))
+        tooltip-pos (cell nil)
+        tooltip-value (cell "")
+        hook-tooltip
+        (fn [data]
+          (let [type (.-type data)
+                elem data.element._node
+                move-tooltip
+                #(do
+                   (reset! tooltip-pos [data.x data.y])
+                   (reset! tooltip-value (str data.series.name ": " data.value.y)))
+                hide-tooltip  #(reset! tooltip-pos nil)]
+            (when (= "point" type)
+              (elem :mouseenter move-tooltip :mouseout hide-tooltip))
+            (when (#{"line" "point"} type)
+              (set! elem.style.stroke (country-color data.series.name)))))
+        update-chart (cell= (when chartist-data-filtered
+                              (.update chart (clj->js chartist-data-filtered))))]
+    (.on chart "draw" hook-tooltip)
+    (spliced
+      (chart-elem
+        (tooltip :pos tooltip-pos
+                 (span :class "ui header" (text tooltip-value))))
+      ($comment "filter buttons")
+      (div :class "ui secondary compact menu"
+           (loop-tpl
+             :bindings [country countries]
+             ((a :class "item")
+              :click #(swap! selected-data symmetric-difference (conj #{} @country))
+
+              (i :class "icon"
+                 :css (cell= {:background-color (country-color country)
+                           :opacity (if (selected-data country) 1 0.4)}))
+              country))))))
