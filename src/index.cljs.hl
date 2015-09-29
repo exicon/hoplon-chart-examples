@@ -3,6 +3,15 @@
         [chart.c3]
         [chart.chartist]))
 
+(defc chartist-data-example
+  {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
+   :series [{:name "Total"
+             :data [8, 3, 8, 3, 7, 4, 6, 2, 8, 1, 20, 33]}
+            {:name "US"
+             :data [3, 1, 1, 1, 4, 11, 9, 0, 1, 23, 9, 1]}
+            {:name "AU"
+             :data [5, 2, 7, 2, 3, 1, 6, 12, 13, 20, 11, 55]}]})
+
 (html
   (head
     (html-meta :name "viewport" :content "width=device-width, initial-scale=1.0")
@@ -11,11 +20,14 @@
     (link :href "/cljsjs/c3/common/c3.min.css" :rel "stylesheet")
     (link :href "//cdn.jsdelivr.net/chartist.js/latest/chartist.min.css" :rel "stylesheet"))
   (body
-    (div :class "ui segment"
-         ; (div ($comment "C3 examples")
-         ;      (h1 :class "ui header" "C3 examples")
-         ;      (chart.c3/examples))
+    ; (div ($comment "C3 examples")
+    ;      (h1 :class "ui header" "C3 examples")
+    ;      (chart.c3/examples))
 
-         (div ($comment "Chartist examples")
+    (div :class "ui container"
+         (div :class "chart"
               (h1 :class "ui header" "Chartist examples")
-              (chart.chartist/examples)))))
+              (chart.chartist/line-chart :chart-data chartist-data-example
+                                       :chart-class "ct-golden-section"
+                                       :def-country "Total"
+                                       )))))

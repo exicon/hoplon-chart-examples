@@ -27,12 +27,6 @@
               {:name "US"
                :data [3, 8, 4, 1, 4]}]}))
 
-(def chartist-opts
-  (clj->js
-    {;:fullWidth true
-    	:width 480
-     :series {"Total" {:showArea true}}}))
-
 (defc chartist-data-example
   {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
    :series [{:name "Total"
@@ -45,21 +39,12 @@
 (defn symmetric-difference [s1 s2]
   (union (difference s1 s2) (difference s2 s1)))
 
-(defc selected-data #{"Total"})
+(defc selected-data #{})
 
 (defn pick-from [original selected]
   (update-in original [:series]
              #(filterv (fn [series] (selected (:name series))) %)))
 
-(defc= chartist-data-filtered
-  (pick-from chartist-data-example selected-data))
-
-(cell= (prn "Chartist Data Cell: " chartist-data-filtered))
-
-(defelem chart [attrs [chart-container]]
-  (let [minimal-data {:labels [""] :series [[0]]}]
-    (with-let [chart ((div :class "ct-chart ct-octave") attrs)]
-              #_(Chartist.Line. chart (clj->js minimal-data)))))
 
 (defelem tooltip [{:keys [pos] :as attrs} kids]
   ((div :class "ui basic small popup" (dissoc attrs :pos))
@@ -87,7 +72,8 @@
      "#86797d"
      "#b2c326"
      "#6188e2"
-     "#a748ca"]))
+     "#a748ca"
+     ]))
 
 (def countries
   ["Total" "US" "AU"])
@@ -95,10 +81,16 @@
 (defn country-color [country]
   ((into {} (map vector countries colors)) country "grey"))
 
-(defelem examples []
-  (let [chart-elem (div :class "ct-chart ct-octave")
-        chart (js/Chartist.Line. chart-elem (clj->js @chartist-data-filtered))
-        countries (cell= (map :name (:series chartist-data-example)))
+(defelem line-chart [{:keys [def-country chart-data chart-class options]
+                    :or {options {:low 0} def-country "Total" chart-class "ct-golden-section"}}]
+  (let [default-country def-country
+        set-default-country #(.click  (js/jQuery "#default-country"))
+        country-checking (cell= (when (empty? selected-data) (set-default-country)))
+        filtered-data (cell= (pick-from chart-data selected-data))
+        chart-elem (div :class (str "ct-chart "chart-class))
+        chartist-opts (clj->js options)
+        chart (js/Chartist.Line. chart-elem (clj->js @filtered-data) chartist-opts)
+        countries (cell= (map :name (:series chart-data)))
         tooltip-pos (cell nil)
         tooltip-value (cell "")
         hook-tooltip
@@ -114,8 +106,10 @@
               (elem :mouseenter move-tooltip :mouseout hide-tooltip))
             (when (#{"line" "point"} type)
               (set! elem.style.stroke (country-color data.series.name)))))
-        update-chart (cell= (when chartist-data-filtered
-                              (.update chart (clj->js chartist-data-filtered))))]
+        update-chart (cell= (when filtered-data
+                              (.update chart (clj->js filtered-data))))]
+    (with-init!
+      (set-default-country)) ; this is a hack T_T REFACTOR!!!
     (.on chart "draw" hook-tooltip)
     (spliced
       (chart-elem
@@ -126,9 +120,10 @@
            (loop-tpl
              :bindings [country countries]
              ((a :class "item")
+              :id (cell= (when (= country default-country) "default-country"))
               :click #(swap! selected-data symmetric-difference (conj #{} @country))
 
               (i :class "icon"
                  :css (cell= {:background-color (country-color country)
-                           :opacity (if (selected-data country) 1 0.4)}))
+                              :opacity (if (selected-data country) 1 0.4)}))
               country))))))
