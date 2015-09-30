@@ -2,7 +2,8 @@
   :project 'hoplon-chartis-example
   :version "0.1.0"
   :dependencies
-  '[[castra "3.0.0-SNAPSHOT"]
+  '[[adzerk/bootlaces "0.1.9" :scope "test"]
+    [castra "3.0.0-SNAPSHOT"]
     [hoplon/boot-hoplon "0.1.7"]
     [hoplon "6.0.0-alpha10"]
     [adzerk/boot-reload "0.3.2"]
@@ -22,11 +23,22 @@
   '[adzerk.boot-reload :refer [reload]]
   '[pandeiro.boot-http :refer [serve]]
   '[adzerk.boot-cljs :refer [cljs]]
+  '[adzerk.bootlaces :refer :all]
   '[cljsjs.boot-cljsjs :refer [from-cljsjs]])
+
+(def +ver+ "0.0.1")
+(def +version+ (str +ver+ "-SNAPSHOT"))
+(bootlaces! +version+)
 
 (task-options!
   speak {:theme "woodblock"}
-  cljs {:compiler-options {:pseudo-names true}})
+  cljs {:compiler-options {:pseudo-names true}}
+  pom {:project 'exicon/charts
+       :version +version+
+       :description (str "Hoplon integration with Chartist.js")
+       :license {"MIT" "http://opensource.org/licenses/MIT"}
+       :scm {:url "https://github.com/exicon/hoplon-chart-examples"}
+       :source-paths #{"src"}})
 
 (deftask dev
   "Build Appboard for development."
@@ -55,3 +67,4 @@
     (hoplon)
     (cljs :optimizations :advanced)
     (sift :invert true :include #{#"^out/"})))
+

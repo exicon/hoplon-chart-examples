@@ -81,10 +81,13 @@
 (defn country-color [country]
   ((into {} (map vector countries colors)) country "grey"))
 
-(defelem line-chart [{:keys [def-country chart-data chart-class options]
-                    :or {options {:low 0} def-country "Total" chart-class "ct-golden-section"}}]
-  (let [default-country def-country
-        set-default-country #(.click  (js/jQuery "#default-country"))
+(defelem line-chart
+  [{:keys [default-country chart-data chart-class options]
+    :or {chart-data {:labels [""] :series [[0]]}
+         options {:low 0}
+         default-country "Total"
+         chart-class "ct-golden-section"}}]
+  (let [set-default-country #(.click  (js/jQuery "#default-country"))
         country-checking (cell= (when (empty? selected-data) (set-default-country)))
         filtered-data (cell= (pick-from chart-data selected-data))
         chart-elem (div :class (str "ct-chart "chart-class))
