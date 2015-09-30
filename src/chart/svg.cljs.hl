@@ -1,0 +1,81 @@
+(ns chart.svg
+  (:require [hoplon.svg :refer [svg rect line g]]))
+
+(def css {:ct-grids {}
+          :ct-grid {:stroke "rgba(0,0,0,.2)"
+                    :stroke-width "1px"
+                    :stroke-dasharray "2px"}
+          :ct-horizontal {}
+          :ct-vertical {}
+          })
+
+(defc chartist-data-example
+  {:labels ["Jan", "Feb", "Mar", "Apr", "May"],
+   :series [{:name "Total"
+             :data [8, 3, 8, 3, 7]}
+            {:name "US"
+             :data [3, 1, 1, 1, 4]}
+            {:name "AU"
+             :data [5, 2, 7, 2, 3]}]})
+
+(defc example-y [0, 2, 4, 6, 8, 10]) ;after normalize
+
+
+(defn index-of
+  "return the index of the supplied item, or nil"
+  [v item]
+  (let [len (count v)]
+    (loop [i 0]
+      (cond
+        (<= len i)         nil,
+        (= item (get v i)) i,
+        :else              (recur (inc i ))))))
+
+(defelem draw-grid [{:keys [item labels direction] :as attrs}]
+  ;TODO Refactor logics here with range
+  (cell-let
+    [x-count (cell= (count labels))
+     y-count (cell= (count example-y))
+     ; TODO how to get the x,y max????
+     x-max 700
+     y-max 400
+     x-index (cell= (index-of labels item))
+     x-pos (cell= (* (/ x-max x-count) x-index))
+
+     y-index (cell= (index-of example-y item))
+     y-pos (cell= (* (/ y-max y-count) y-index))
+     ]
+    (case direction
+      :vertical (line :x1 x-pos
+                      :y1 (cell= (- y-max (/ y-max y-count)))
+                      :x2 x-pos
+                      :y2 0
+                      :css (:ct-grid css))
+      :horizontal (line :x1 0
+                        :y1 y-pos
+                        :x2 x-max
+                        :y2 y-pos
+                        :css (:ct-grid css)))))
+
+(defelem create-grids
+  [{:keys [data]}]
+  (let [labels (cell= (:labels data))]
+    (g (loop-tpl :bindings [item labels]
+               (draw-grid :item item :labels labels :direction :vertical))
+     (loop-tpl :bindings [item example-y]
+               (draw-grid :item item :labels labels :direction :horizontal)))))
+
+(defelem rectangle
+  [{:keys [id height width data]
+    :or {height "100%"
+         width "100%"
+         }}]
+  (let [labels (cell= (:labels data))
+        series (cell= (:series data))
+        countries (cell= (mapv #(:name %) series))
+        max-value (cell= (apply max (mapv #(apply max (:data %)) series)))
+        y-interval-value (cell= (.round js/Math (/ max-value 10)))
+        test-list (cell= (range 0 (+ max-value y-interval-value) y-interval-value))]
+  (svg :id id :width width :height height
+       (create-grids :data data))))
+

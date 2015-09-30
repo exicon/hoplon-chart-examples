@@ -1,16 +1,39 @@
 (page "index.html"
       (:require
         [chart.c3]
-        [chart.chartist]))
+        [chart.chartist]
+        [chart.svg :as svg]))
+
+; (defc chartist-data-example
+;   {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
+;    :series [{:name "Total"
+;              :data [8, 3, 8, 3, 7, 4, 6, 2, 8, 1, 20, 33]}
+;             {:name "US"
+;              :data [3, 1, 1, 1, 4, 11, 9, 0, 1, 23, 9, 1]}
+;             {:name "AU"
+;              :data [5, 2, 7, 2, 3, 1, 6, 12, 13, 20, 11, 55]}]})
+
+; (defc chartist-data-example
+;   {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
+;    :series [{:name "Total"
+;              :data [8, 3, 8, 3, 7]}
+;             {:name "US"
+;              :data [3, 1, 1, 1, 4]}
+;             {:name "AU"
+;              :data [5, 2, 7, 2, 3]}]})
 
 (defc chartist-data-example
   {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
    :series [{:name "Total"
-             :data [8, 3, 8, 3, 7, 4, 6, 2, 8, 1, 20, 33]}
+             :data [81, 3, 8, 3, 7]}
             {:name "US"
-             :data [3, 1, 1, 1, 4, 11, 9, 0, 1, 23, 9, 1]}
+             :data [3, 1, 1, 11, 4]}
             {:name "AU"
-             :data [5, 2, 7, 2, 3, 1, 6, 12, 13, 20, 11, 55]}]})
+             :data [5, 22, 7, 2, 3]}]})
+
+(def point1 {:x 2 :y 3})
+
+
 
 (html
   (head
@@ -25,8 +48,14 @@
     ;      (chart.c3/examples))
 
     (div :class "ui container"
+         (div :class "ct-chart ct-golden-section"
+              (svg/rectangle :data chartist-data-example
+                        :id "test-svg")))
+
+    (div :class "ui container"
          (div :class "chart"
               (h1 :class "ui header" "Chartist examples")
               (chart.chartist/line-chart :chart-class "ct-golden-section"
                                        :default-country "Total"
+                                       :chart-data chartist-data-example
                                        )))))
