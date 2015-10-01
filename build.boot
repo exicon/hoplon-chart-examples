@@ -14,6 +14,7 @@
     [exicon/semantic-ui "2.0.6-SNAPSHOT"]
     [com.andrewmcveigh/cljs-time "0.3.6"]
     [cljsjs/c3 "0.4.10-0"]
+    [cljsjs/chartist "0.9.4-0"]
     ]
   :source-paths #{"src"}
   :resource-paths #{"assets"})
@@ -32,13 +33,7 @@
 
 (task-options!
   speak {:theme "woodblock"}
-  cljs {:compiler-options {:pseudo-names true}}
-  pom {:project 'exicon/charts
-       :version +version+
-       :description (str "Hoplon integration with Chartist.js")
-       :license {"MIT" "http://opensource.org/licenses/MIT"}
-       :scm {:url "https://github.com/exicon/hoplon-chart-examples"}
-       :source-paths #{"src"}})
+  cljs {:compiler-options {:pseudo-names true}})
 
 (deftask dev
   "Build Appboard for development."

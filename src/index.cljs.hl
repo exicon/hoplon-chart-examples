@@ -55,7 +55,7 @@
     (div :class "ui container"
          (div :class "chart"
               (h1 :class "ui header" "Chartist examples")
-              (chart.chartist/line-chart :chart-class "ct-golden-section"
-                                       :default-country "Total"
-                                       :chart-data chartist-data-example
-                                       )))))
+              (chart.chartist/line-chart
+                :chart-data chartist-data-example
+                :chart-class "ct-golden-section"
+                :default-country "Total")))))
