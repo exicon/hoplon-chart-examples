@@ -49,8 +49,8 @@
              (svg/rectangle :data chartist-data-example
                             :chart-container chart-container)))
          #_(div :class "ui button"
-              :click #(reset! svg/example-dimensions [800 700])
-              "Amazing TEST"))
+                :click #(reset! svg/example-dimensions [800 700])
+                "Amazing TEST"))
 
     (div :class "ui container"
          (div :class "chart"

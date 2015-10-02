@@ -1,17 +1,81 @@
 (ns chart.svg
-  (:require [hoplon.svg :refer [svg rect line g]]))
+  (:require [hoplon.svg :as svg :refer [rect line g]]))
+
+(def colors
+  (cycle
+    [
+     "#d70206"
+     "#f05b4f"
+     "#f4c63d"
+     "#d17905"
+     "#453d3f"
+     "#59922b"
+     "#0544d3"
+     "#6b0392"
+     "#f05b4f"
+     "#dda458"
+     "#eacf7d"
+     "#86797d"
+     "#b2c326"
+     "#6188e2"
+     "#a748ca"
+     ]))
+
+(def full-countries-list
+  ["Total" "US" "AU"])
+
+(defn country-color [country]
+  ((into {} (map vector full-countries-list colors)) country "grey"))
 
 (def css {:ct-grids {}
           :ct-grid {:stroke "rgba(0,0,0,.2)"
                     :stroke-width "1px"
                     :stroke-dasharray "2px"}
+          :ct-point {:stroke-width "10px"
+                     :stroke-linecap "round"}
+          :ct-line{:fill "none"
+                   :stroke-width "4px"}
           :ct-horizontal {}
           :ct-vertical {}
           })
+(defn auto-scale-axis [data dimensions]
+  (let [x-max (cell= (first dimensions))
+        y-max (cell= (second dimensions))
+        x-labels (cell= (:labels data))
+        series (cell= (:series data))
+        max-value (cell= (apply max (mapv #(apply max (:data %)) series)))
+        y-interval-value (cell= (.round js/Math (/ max-value 10)))
+        y-labels (cell= (vec (range 0 (+ max-value y-interval-value) y-interval-value)))
+        x-coordinates (cell= (vec (range 0 x-max (/ x-max (count x-labels)))))
+        y-coordinates (cell= (vec (range 0 y-max (/ y-max (count y-labels))))) ]
+    {:x-max x-max
+     :y-max y-max
+     :x-labels x-labels
+     :y-labels y-labels
+     :x-coordinates x-coordinates
+     :y-coordinates y-coordinates
+     }))
 
-(defelem draw-grids [{:keys [scaled-data]}]
+(defn auto-scale-series [series scaled-axis]
+  (let [{:keys [y-max y-labels x-coordinates]} scaled-axis
+        y-axis-value (cell= (last y-labels))
+        y-formula #(- @y-max (/ (* % @y-max) @y-axis-value))
+        x-formula #(nth @x-coordinates %)
+        points (cell= (when (not-empty x-coordinates)
+                        (map-indexed (fn [idx item]
+                                       (hash-map :x (x-formula idx)
+                                                 :y (y-formula item))) (:data series))))
+        path-line (cell= (when points
+                           (str "M"
+                                (clojure.string/join " L" (map #(str (:x %) "," (:y %) ) points))))) ]
+    {:name (:name series)
+     :path path-line
+     :points points
+     :color (country-color (:name series))}))
+
+(defelem draw-grids [{:keys [scaled-axis]}]
   (cell-let
-    [{:keys [y-coordinates x-coordinates x-max y-max]} scaled-data]
+    [{:keys [y-coordinates x-coordinates x-max y-max]} scaled-axis]
     (cell= (g
              (loop-tpl :bindings [c y-coordinates]
                        (line :x1 0 :x2 x-max
@@ -22,35 +86,38 @@
                              :y1 0 :y2 y-max
                              :css (:ct-grid css)))))))
 
-(defn auto-scale-axis [data dimensions]
-  (let [x-max (cell= (first dimensions))
-        y-max (cell= (second dimensions))
-        x-labels (cell= (:labels data))
-        series (cell= (:series data))
-        max-value (cell= (apply max (mapv #(apply max (:data %)) series)))
-        y-interval-value (cell= (.round js/Math (/ max-value 10)))
-        y-labels (cell= (vec (range 0 (+ max-value y-interval-value) y-interval-value)))
-        x-coordinates (cell= (vec (range 0 x-max (/ x-max (count x-labels)))))
-        y-coordinates (cell= (vec (range 0 y-max (/ y-max (count y-labels)))))]
-    {:x-max x-max
-     :y-max y-max
-     :x-labels x-labels
-     :y-labels y-labels
-     :x-coordinates x-coordinates
-     :y-coordinates y-coordinates
-     }))
+(defc example-series
+  {:name "Total"
+   :data [81, 3, 8, 3, 7]})
+
+(defelem draw-series [{:keys [scaled-series]}]
+  (cell=
+    (g
+      (svg/path :d (:path scaled-series)
+                :css (merge
+                       (:ct-line css)
+                       {:stroke (:color scaled-series)}))
+
+      (loop-tpl :bindings [point (:points scaled-series)]
+                (line :x1 (cell= (:x point))
+                      :x2 (cell= (+ 0.01 (:x point)))
+                      :y1 (cell= (:y point))
+                      :y2 (cell= (+ 0.01 (:y point)))
+                      :css (merge
+                             (:ct-point css)
+                             {:stroke (:color scaled-series)}) )))))
 
 (defelem rectangle
   [{:keys [chart-container height width data]
     :or {height "100%"
          width "100%"
          }}]
-  (let [
-        dimensions (prop-cell [(.-offsetWidth chart-container)
+  (let [dimensions (prop-cell [(.-offsetWidth chart-container)
                                (.-offsetHeight chart-container)])
-        scaled-data (cell= (auto-scale-axis data dimensions))
-        ;countries (cell= (mapv #(:name %) series))
-        ]
-    (svg :width width :height height
-         (draw-grids :scaled-data scaled-data))))
+        ;countries (cell= (mapv #(:name %) (:series data)))
+        scaled-axis (cell= (auto-scale-axis data dimensions))
+        scaled-series (cell= (auto-scale-series example-series scaled-axis)) ]
+    (svg/svg :width width :height height
+             (draw-grids :scaled-axis scaled-axis)
+             (draw-series :scaled-series scaled-series))))
 
