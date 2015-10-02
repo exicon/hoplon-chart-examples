@@ -43,14 +43,14 @@
     (link :href "/cljsjs/c3/common/c3.min.css" :rel "stylesheet")
     (link :href "//cdn.jsdelivr.net/chartist.js/latest/chartist.min.css" :rel "stylesheet"))
   (body
-    ; (div ($comment "C3 examples")
-    ;      (h1 :class "ui header" "C3 examples")
-    ;      (chart.c3/examples))
-
     (div :class "ui container"
-         (div :class "ct-chart ct-golden-section"
-              (svg/rectangle :data chartist-data-example
-                        :id "test-svg")))
+         (let [chart-container (div :class "ct-chart ct-golden-section")]
+           (chart-container
+             (svg/rectangle :data chartist-data-example
+                            :chart-container chart-container)))
+         #_(div :class "ui button"
+              :click #(reset! svg/example-dimensions [800 700])
+              "Amazing TEST"))
 
     (div :class "ui container"
          (div :class "chart"
