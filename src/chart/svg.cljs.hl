@@ -56,6 +56,8 @@
 (defn auto-scale-axis [data dimensions]
   (let [x-max (cell= (first dimensions))
         y-max (cell= (second dimensions))
+        x-offset 50 ;TODO how to?
+        y-offset 0 ;TODO howto?
         x-labels (cell= (:labels data))
         series (cell= (:series data))
         max-value (cell= (apply max (mapv #(apply max (:data %)) series)))
@@ -66,7 +68,8 @@
         x-coordinates (cell= (vec (range 0 x-max x-interval)))
         y-coordinates (cell= (vec (range 0 y-max y-interval)))
         _ (cell= (print "x: " x-labels "\ny: " y-labels))]
-    {:x-max x-max
+    {:x-offset x-offset
+     :x-max x-max
      :y-max y-max
      :x-labels x-labels
      :y-labels y-labels
@@ -96,11 +99,11 @@
 
 (defelem draw-grids [{:keys [scaled-axis]}]
   (cell-let
-    [{:keys [y-coordinates x-coordinates x-max y-max]} scaled-axis
+    [{:keys [y-coordinates x-coordinates x-max y-max x-offset]} scaled-axis
      hline (fn [height max]
              (line :x1 0 :y1 height
                    :x2 max :y2 height))]
-    (cell= (g :transform (str "scale(0.9 -0.9) translate(0 -" @y-max ")")
+    (cell= (g :transform (str "scale(0.9 -0.9) translate(" x-offset " " (* -1 @y-max) ")")
               (loop-tpl :bindings [y y-coordinates]
                         (line :x1 0 :x2 x-max
                               :y1 y :y2 y
@@ -116,7 +119,7 @@
 
 (defelem draw-series [{:keys [scaled-series scaled-axis]}]
   (cell=
-    (g :transform (str "scale(0.9 -0.9) translate(0 -" @(:y-max scaled-axis) ")")
+    (g :transform (str "scale(0.9 -0.9) translate(" (:x-offset scaled-axis) " " (* -1 @(:y-max scaled-axis)) ")")
       (svg/path :d (:path scaled-series)
                 :css (merge
                        (:ct-line css)
@@ -132,14 +135,22 @@
                              {:stroke (:color scaled-series)}) )))))
 
 (defelem draw-labels [{:keys [scaled-axis]}]
-  (cell-let [{:keys [x-coordinates x-labels x-interval
-                     y-max]} scaled-axis]
-            (cell= (g :transform (str "scale(0.9 1) translate(-3 -" (* 0.1 @(:y-max scaled-axis)) ")")
-                     (loop-tpl :bindings [x x-coordinates]
-                               (let [x-label #(if (>= % (count @x-labels)) "" (nth @x-labels %))]
-                                 (svg/foreignObject :x x :y y-max :height 20 :width x-interval
-                                                    (span :css (:ct-label css) (x-label (index-of @x-coordinates @x)))))
-                               )))))
+  (cell-let [{:keys [x-coordinates x-labels x-interval x-offset
+                     y-coordinates y-labels y-max y-interval]} scaled-axis]
+            (cell= [(g :transform (str "scale(0.9 1) translate(" x-offset " " (* -0.1 @y-max ) ")")
+                       (loop-tpl :bindings [x x-coordinates]
+                                 (let [x-label #(if (>= % (count @x-labels)) "" (nth @x-labels %))]
+                                   (svg/foreignObject :x x :y y-max :height 20 :width x-interval
+                                                      (span :css (:ct-label css) (x-label (index-of @x-coordinates @x)))))))
+
+                    (g :transform (str "scale(1 0.9) translate(0 " " " (* -0.1 @y-max ) ")")
+                       (loop-tpl :bindings [y y-coordinates]
+                                 (let [y-reverse (cell= (reverse y-labels))
+                                       y-label #(if (>= % (count @y-reverse)) "" (nth @y-reverse %))
+                                       _ (println "Reverse? -->" y-reverse)]
+                                   (svg/foreignObject :x 10 :y y :height y-interval :width x-interval
+                                                      (span :css (:ct-label css) (y-label (index-of @y-coordinates @y)))))))]
+                   )))
 
 (defelem rectangle
   [{:keys [chart-container height width data]
