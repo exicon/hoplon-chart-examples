@@ -33,11 +33,26 @@
                     :stroke-dasharray "2px"}
           :ct-point {:stroke-width "10px"
                      :stroke-linecap "round"}
-          :ct-line{:fill "none"
-                   :stroke-width "4px"}
-          :ct-horizontal {}
-          :ct-vertical {}
-          })
+          :ct-line {:fill "none"
+                    :stroke-width "4px"}
+          :ct-label {
+                     :fill "rgba(0,0,0,.4)"
+                     :color "rgba(0,0,0,0.9)"
+                     :font-size ".95rem"
+                     :line-height "1"
+                     }}
+  )
+
+(defn index-of
+  "return the index of the supplied item, or nil"
+  [v item]
+  (let [len (count v)]
+    (loop [i 0]
+      (cond
+        (<= len i)         nil,
+        (= item (get v i)) i,
+        :else              (recur (inc i ))))))
+
 (defn auto-scale-axis [data dimensions]
   (let [x-max (cell= (first dimensions))
         y-max (cell= (second dimensions))
@@ -46,53 +61,62 @@
         max-value (cell= (apply max (mapv #(apply max (:data %)) series)))
         y-interval-value (cell= (.round js/Math (/ max-value 10)))
         y-labels (cell= (vec (range 0 (+ max-value y-interval-value) y-interval-value)))
-        x-coordinates (cell= (vec (range 0 x-max (/ x-max (count x-labels)))))
-        y-coordinates (cell= (vec (range 0 y-max (/ y-max (count y-labels))))) ]
+        x-interval (cell= (/ x-max (count x-labels)))
+        y-interval (cell= (/ x-max (count x-labels)))
+        x-coordinates (cell= (vec (range 0 x-max x-interval)))
+        y-coordinates (cell= (vec (range 0 y-max y-interval)))
+        _ (cell= (print "x: " x-labels "\ny: " y-labels))]
     {:x-max x-max
      :y-max y-max
      :x-labels x-labels
      :y-labels y-labels
+     :x-interval x-interval
+     :y-interval y-interval
      :x-coordinates x-coordinates
      :y-coordinates y-coordinates
      }))
 
+(defn svg-path [points]
+  (when points
+    (str "M" (clojure.string/join " L" (map #(str (:x %) "," (:y %)) points)))))
+
 (defn auto-scale-series [series scaled-axis]
   (let [{:keys [y-max y-labels x-coordinates]} scaled-axis
         y-axis-value (cell= (last y-labels))
-        y-formula #(- @y-max (/ (* % @y-max) @y-axis-value))
+        y-formula #(/ (* % @y-max) @y-axis-value)
         x-formula #(nth @x-coordinates %)
         points (cell= (when (not-empty x-coordinates)
                         (map-indexed (fn [idx item]
                                        (hash-map :x (x-formula idx)
-                                                 :y (y-formula item))) (:data series))))
-        path-line (cell= (when points
-                           (str "M"
-                                (clojure.string/join " L" (map #(str (:x %) "," (:y %) ) points))))) ]
+                                                 :y (y-formula item))) (:data series))))]
     {:name (:name series)
-     :path path-line
+     :path (cell= (svg-path points))
      :points points
      :color (country-color (:name series))}))
 
 (defelem draw-grids [{:keys [scaled-axis]}]
   (cell-let
-    [{:keys [y-coordinates x-coordinates x-max y-max]} scaled-axis]
-    (cell= (g
-             (loop-tpl :bindings [c y-coordinates]
-                       (line :x1 0 :x2 x-max
-                             :y1 c :y2 c
-                             :css (:ct-grid css)))
-             (loop-tpl :bindings [c x-coordinates]
-                       (line :x1 c :x2 c
-                             :y1 0 :y2 y-max
-                             :css (:ct-grid css)))))))
+    [{:keys [y-coordinates x-coordinates x-max y-max]} scaled-axis
+     hline (fn [height max]
+             (line :x1 0 :y1 height
+                   :x2 max :y2 height))]
+    (cell= (g :transform (str "scale(0.9 -0.9) translate(0 -" @y-max ")")
+              (loop-tpl :bindings [y y-coordinates]
+                        (line :x1 0 :x2 x-max
+                              :y1 y :y2 y
+                              :css (:ct-grid css)))
+              (loop-tpl :bindings [x x-coordinates]
+                        (line :x1 x :x2 x
+                              :y1 0 :y2 y-max
+                              :css (:ct-grid css)))))))
 
 (defc example-series
   {:name "Total"
    :data [81, 3, 8, 3, 7]})
 
-(defelem draw-series [{:keys [scaled-series]}]
+(defelem draw-series [{:keys [scaled-series scaled-axis]}]
   (cell=
-    (g
+    (g :transform (str "scale(0.9 -0.9) translate(0 -" @(:y-max scaled-axis) ")")
       (svg/path :d (:path scaled-series)
                 :css (merge
                        (:ct-line css)
@@ -107,17 +131,29 @@
                              (:ct-point css)
                              {:stroke (:color scaled-series)}) )))))
 
+(defelem draw-labels [{:keys [scaled-axis]}]
+  (cell-let [{:keys [x-coordinates x-labels x-interval
+                     y-max]} scaled-axis]
+            (cell= (g :transform (str "scale(0.9 1) translate(-3 -" (* 0.1 @(:y-max scaled-axis)) ")")
+                     (loop-tpl :bindings [x x-coordinates]
+                               (let [x-label #(if (>= % (count @x-labels)) "" (nth @x-labels %))]
+                                 (svg/foreignObject :x x :y y-max :height 20 :width x-interval
+                                                    (span :css (:ct-label css) (x-label (index-of @x-coordinates @x)))))
+                               )))))
+
 (defelem rectangle
   [{:keys [chart-container height width data]
     :or {height "100%"
          width "100%"
          }}]
-  (let [dimensions (prop-cell [(.-offsetWidth chart-container)
+  (let [
+        dimensions (prop-cell [(.-offsetWidth chart-container)
                                (.-offsetHeight chart-container)])
         ;countries (cell= (mapv #(:name %) (:series data)))
         scaled-axis (cell= (auto-scale-axis data dimensions))
         scaled-series (cell= (auto-scale-series example-series scaled-axis)) ]
     (svg/svg :width width :height height
              (draw-grids :scaled-axis scaled-axis)
-             (draw-series :scaled-series scaled-series))))
+             (draw-series :scaled-axis scaled-axis :scaled-series scaled-series)
+             (draw-labels :scaled-axis scaled-axis))))
 
