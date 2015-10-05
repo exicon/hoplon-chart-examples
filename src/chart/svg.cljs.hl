@@ -108,6 +108,16 @@
      :points points
      :color (country-color (:name series))}))
 
+(defelem tooltip [{:keys [pos] :as attrs} kids]
+  ((div :class "ui basic small popup" (dissoc attrs :pos))
+   :class (cell= {:visible pos})
+   :css (cell-let
+          [[x y] pos]
+          (cell= {:left (str (+ x 50) "px")
+                  :width "6em"
+                  :top (str (- y 0) "px")}))
+   kids))
+
 (defelem draw-grids [{:keys [scaled-axis]}]
   (cell-let
     [{:keys [y-coordinates x-coordinates x-max y-max x-offset y-offset]} scaled-axis
@@ -126,11 +136,12 @@
 
 (defc example-series
   {:name "Total"
-   :data [nil nil 33 46 73 nil 25 25 nil nil] ;[75 23 45 1 43 88 87 11 55]
+   :data [5 nil 33 46 73 nil 25 25 nil 57] ;[75 23 45 1 43 88 87 11 55]
    })
 
-(defelem draw-series [{:keys [scaled-series scaled-axis]}]
+(defelem draw-series [{:keys [scaled-series scaled-axis move-tooltip hide-tooltip]}]
   (cell=
+    [#_(tooltip :pos)
     (g :transform (str "scale(1 -1) translate(" (:x-offset scaled-axis) " " (* -1 @(:y-max scaled-axis)) ")")
        (svg/path :d (:path scaled-series)
                  :css (merge
@@ -143,10 +154,13 @@
                        :x2 (cell= (:x point))
                        :y1 (cell= (:y point))
                        :y2 (cell= (:y point))
+                       :mouseenter #(move-tooltip (:x @point)
+                                                  (- @(:y-max scaled-axis) (:y @point)))
+                       :mouseout hide-tooltip
                        :css (merge
                               (:ct-point css)
                               {:stroke (:color scaled-series)}))
-                   )))))
+                   )))]))
 
 (defelem draw-labels [{:keys [scaled-axis]}]
   (cell-let [{:keys [x-coordinates x-labels x-interval x-offset
@@ -167,6 +181,8 @@
                     ]
                    )))
 
+
+
 (defelem rectangle
   [{:keys [chart-container height width data]
     :or {height "100%"
@@ -177,9 +193,19 @@
                                (.-offsetHeight chart-container)])
         ;countries (cell= (mapv #(:name %) (:series data)))
         scaled-axis (cell= (auto-scale-axis data dimensions))
-        scaled-series (cell= (auto-scale-series example-series scaled-axis)) ]
-    (svg/svg :width width :height height
+        scaled-series (cell= (auto-scale-series example-series scaled-axis))
+        tooltip-pos (cell nil)
+        tooltip-value (cell "")
+        move-tooltip (fn [x y]
+                       (do
+                         (reset! tooltip-pos [x y])
+                         (reset! tooltip-value "(◕ᴗ◕✿)"))) ;TODO show series name and value
+        hide-tooltip #(reset! tooltip-pos nil)]
+    [(tooltip :pos tooltip-pos
+                 (span :class "ui header" (text tooltip-value)))
+     (svg/svg :width width :height height
              (draw-grids :scaled-axis scaled-axis)
-             (draw-series :scaled-axis scaled-axis :scaled-series scaled-series)
-             (draw-labels :scaled-axis scaled-axis))))
+             (draw-series :scaled-axis scaled-axis :scaled-series scaled-series
+                          :move-tooltip move-tooltip :hide-tooltip hide-tooltip)
+             (draw-labels :scaled-axis scaled-axis))]))
 
