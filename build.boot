@@ -6,10 +6,10 @@
     [castra "3.0.0-SNAPSHOT"]
     [hoplon/boot-hoplon "0.1.7"]
     [hoplon "6.0.0-alpha10"]
-    [adzerk/boot-reload "0.3.2"]
+    [adzerk/boot-reload "0.4.0"]
     [pandeiro/boot-http "0.6.3"]
     [org.clojure/clojurescript "1.7.122"]
-    [adzerk/boot-cljs "1.7.48-3"]
+    [adzerk/boot-cljs "1.7.48-5"]
     [cljsjs/boot-cljsjs "0.5.0" :scope "test"]
     [exicon/semantic-ui "2.0.6-SNAPSHOT"]
     [com.andrewmcveigh/cljs-time "0.3.6"]
@@ -48,8 +48,7 @@
     (hoplon :pretty-print true)
     (reload)
     (cljs :optimizations :none
-          :source-map true)
-    (speak)))
+          :source-map true)))
 
 (deftask prod
   "Build Appboard for production."
