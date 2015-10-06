@@ -97,7 +97,6 @@
 
 (defn auto-scale-series [filtered-data scaled-axis]
   (mapv (fn [series]
-
           (let [{:keys [y-max y-labels x-coordinates y-axis-value]} scaled-axis
                 y-formula #(/ (* % y-max) y-axis-value)
                 x-formula #(nth x-coordinates %)
@@ -193,12 +192,12 @@
                                                      y-label)))))]))
 
 (defelem rectangle
-  [{:keys [height width data example-series]
+  [{:keys [height width data chart-container]
     :or {height "100%"
          width "100%"
-         default-country "Total"}}]
-  (let [chart-container (div :class "ct-chart ct-golden-section")
-        dimensions (prop-cell [(.-offsetWidth chart-container)
+         default-country "Total"
+         chart-container (div :class "ct-chart ct-golden-section")}}]
+  (let [dimensions (prop-cell [(.-offsetWidth chart-container)
                                (.-offsetHeight chart-container)])
         countries (cell= (mapv #(:name %) (:series data)))
         selected-data (cell #{"Total"})
