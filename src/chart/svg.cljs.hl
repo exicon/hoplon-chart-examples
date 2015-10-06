@@ -69,7 +69,9 @@
         x-interval (cell= (/ x-max (count x-labels)))
         y-interval (cell= (/ y-max (count y-labels)))
         x-coordinates (cell= (vec (range 0 x-max x-interval)))
-        y-coordinates (cell= (vec (range 0 y-max y-interval)))]
+        y-coordinates (cell= (vec (map-indexed
+                                    (fn [idx item]
+                                      (/ (* y-max (* idx y-interval-value)) y-axis-value)) y-labels))) ]
     {:x-offset x-offset
      :y-offset y-offset
      :x-max x-max
@@ -89,19 +91,19 @@
                                                  (map #(if %
                                                          (str "L " (:x %) "," (:y %))
                                                          "M") points)))]
-  (when points
-    (clojure.string/replace
-      (clojure.string/replace draft-line-str #"(M+)L" "M") #"(M+)$" " "))))
+    (when points
+      (clojure.string/replace
+        (clojure.string/replace draft-line-str #"(M+)L" "M") #"(M+)$" " "))))
 
 (defn auto-scale-series [series scaled-axis]
   (let [{:keys [y-max y-labels x-coordinates y-axis-value]} scaled-axis
-        y-formula #(/ (* % @y-max) (+ 5 @y-axis-value))
+        y-formula #(/ (* % @y-max) @y-axis-value)
         x-formula #(nth @x-coordinates %)
         points (cell= (when (not-empty x-coordinates)
                         (map-indexed (fn [idx item]
                                        (if item
                                          (hash-map :x (x-formula idx)
-                                                 :y (y-formula item))
+                                                   :y (y-formula item))
                                          nil)) (:data series))))]
     {:name (:name series)
      :path (cell= (svg-path points))
@@ -136,31 +138,35 @@
 
 (defc example-series
   {:name "Total"
-   :data [5 nil 33 46 73 nil 25 25 nil 57] ;[75 23 45 1 43 88 87 11 55]
+   :data
+   ; [0 10 20 30 40 50 60 70 80 90 100]
+   [2 3 11 25 29 6 9 11 82 99]
+   ;[5 nil 30 46 73 nil 25 25 nil 57]
+   ;[75 23 45 1 43 88 87 11 55]
    })
 
 (defelem draw-series [{:keys [scaled-series scaled-axis move-tooltip hide-tooltip]}]
   (cell=
     [#_(tooltip :pos)
-    (g :transform (str "scale(1 -1) translate(" (:x-offset scaled-axis) " " (* -1 @(:y-max scaled-axis)) ")")
-       (svg/path :d (:path scaled-series)
-                 :css (merge
-                        (:ct-line css)
-                        {:stroke (:color scaled-series)}))
+     (g :transform (str "scale(1 -1) translate(" (:x-offset scaled-axis) " " (* -1 @(:y-max scaled-axis)) ")")
+        (svg/path :d (:path scaled-series)
+                  :css (merge
+                         (:ct-line css)
+                         {:stroke (:color scaled-series)}))
 
-       (loop-tpl :bindings [point (:points scaled-series)]
-                 (when @point
-                   (line :x1 (cell= (:x point))
-                       :x2 (cell= (:x point))
-                       :y1 (cell= (:y point))
-                       :y2 (cell= (:y point))
-                       :mouseenter #(move-tooltip (:x @point)
-                                                  (- @(:y-max scaled-axis) (:y @point)))
-                       :mouseout hide-tooltip
-                       :css (merge
-                              (:ct-point css)
-                              {:stroke (:color scaled-series)}))
-                   )))]))
+        (loop-tpl :bindings [point (:points scaled-series)]
+                  (when @point
+                    (line :x1 (cell= (:x point))
+                          :x2 (cell= (:x point))
+                          :y1 (cell= (:y point))
+                          :y2 (cell= (:y point))
+                          :mouseenter #(move-tooltip (:x @point)
+                                                     (- @(:y-max scaled-axis) (:y @point)))
+                          :mouseout hide-tooltip
+                          :css (merge
+                                 (:ct-point css)
+                                 {:stroke (:color scaled-series)}))
+                    )))]))
 
 (defelem draw-labels [{:keys [scaled-axis]}]
   (cell-let [{:keys [x-coordinates x-labels x-interval x-offset
@@ -202,10 +208,10 @@
                          (reset! tooltip-value "(◕ᴗ◕✿)"))) ;TODO show series name and value
         hide-tooltip #(reset! tooltip-pos nil)]
     [(tooltip :pos tooltip-pos
-                 (span :class "ui header" (text tooltip-value)))
+              (span :class "ui header" (text tooltip-value)))
      (svg/svg :width width :height height
-             (draw-grids :scaled-axis scaled-axis)
-             (draw-series :scaled-axis scaled-axis :scaled-series scaled-series
-                          :move-tooltip move-tooltip :hide-tooltip hide-tooltip)
-             (draw-labels :scaled-axis scaled-axis))]))
+              (draw-grids :scaled-axis scaled-axis)
+              (draw-series :scaled-axis scaled-axis :scaled-series scaled-series
+                           :move-tooltip move-tooltip :hide-tooltip hide-tooltip)
+              (draw-labels :scaled-axis scaled-axis))]))
 
