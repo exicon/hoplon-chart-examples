@@ -63,7 +63,10 @@
         x-labels (cell= (:labels data))
         series (cell= (:series data))
         max-value (cell= (apply max (mapv #(apply max (:data %)) series)))
-        y-interval-value (cell 5) ;(cell= (.round js/Math (/ max-value 10)))
+        max-value-digits (cell= (dec (count (str max-value))))
+        max-value-mod (cell= (mod max-value 10))
+        y-interval-value (cell= (cond (<= max-value-mod 4) (Math/pow 5 max-value-digits)
+                                      (>= max-value-mod 5) (Math/pow 10 max-value-digits)))
         y-axis-value (cell= (+ max-value y-interval-value))
         y-labels (cell= (vec (range 0 y-axis-value y-interval-value)))
         x-interval (cell= (/ x-max (count x-labels)))
@@ -140,8 +143,10 @@
 (defc example-series
   {:name "Total"
    :data
-   ; [0 10 20 30 40 50 60 70 80 90 100]
-   [2 3 11 25 29 6 9 11 82 99]
+   [5, 8, 7, 2, 3]
+   ;[0 10 20 30 389 50 60 70 80 90 100 198]
+   ;[2 3 11 25 29 6 9 11 82 99]
+   ;[100 103 5058 1919 2782 137 1 9 2737]
    ;[5 nil 30 46 73 nil 25 25 nil 57]
    ;[75 23 45 1 43 88 87 11 55]
    })
@@ -164,7 +169,7 @@
                           :mouseenter #(move-tooltip (:x @point)
                                                      (- @(:y-max scaled-axis) (:y @point))
                                                      (nth (:data scaled-series)
-                                                       (index-of (vec @(:points scaled-series)) @point)))
+                                                          (index-of (vec @(:points scaled-series)) @point)))
                           :mouseout hide-tooltip
                           :css (merge
                                  (:ct-point css)
