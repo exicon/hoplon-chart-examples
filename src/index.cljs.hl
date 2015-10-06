@@ -4,44 +4,15 @@
         [chart.chartist]
         [chart.svg :as svg]))
 
-; (defc chartist-data-example
-;   {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
-;    :series [{:name "Total"
-;              :data [8, 3, 8, 3, 7, 4, 6, 2, 8, 1, 20, 33]}
-;             {:name "US"
-;              :data [3, 1, 1, 1, 4, 11, 9, 0, 1, 23, 9, 1]}
-;             {:name "AU"
-;              :data [5, 2, 7, 2, 3, 1, 6, 12, 13, 20, 11, 55]}]})
-
-; (defc chartist-data-example
-;   {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
-;    :series [{:name "Total"
-;              :data [8, 3, 8, 3, 7]}
-;             {:name "US"
-;              :data [3, 1, 1, 1, 4]}
-;             {:name "AU"
-;              :data [5, 2, 7, 2, 3]}]})
-
 (defc chartist-data-example
   {:labels ["Jan", "Feb", "Mar", "Apr", "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"],
    :series [{:name "Total"
-             :data [5, 8, 8, 3, 7]}
-            ; {:name "US"
-            ;  :data [3, 1, 1, 11, 4]}
-            ; {:name "AU"
-            ;  :data [5, 22, 7, 2, 3]}
+             :data [0 10 20 30 389 50 60 70 80 90 100 198]}
+            {:name "US"
+             :data [100 103 1200 809 650 137 1 9 2737]}
+            {:name "AU"
+             :data [5 nil 30 46 73 nil 25 25 nil 57]}
             ]})
-
-(defc example-series
-  {:name "Total"
-   :data
-   [5, 8, 7, 2, 3]
-   ; [0 10 20 30 389 50 60 70 80 90 100 198]
-   ; [2 3 11 25 29 6 9 11 82 99]
-   ; [100 103 5058 1919 2782 137 1 9 2737]
-   ; [5 nil 30 46 73 nil 25 25 nil 57]
-   ; [75 23 45 1 43 88 87 11 55]
-   })
 
 (def point1 {:x 2 :y 3})
 
@@ -59,16 +30,7 @@
          (let [chart-container (div :class "ct-chart ct-golden-section")]
            (chart-container
              (svg/rectangle :data chartist-data-example
-                            :chart-container chart-container
-                            :example-series example-series)))
-         #_(div :class "ui button"
-          :click #(reset! example-series :name "US"
-                          :data
-                          [5, 8, 7, 2, 3])
-           "TEST")
-         #_(div :class "ui button"
-                :click #(reset! svg/example-dimensions [800 700])
-                "Amazing TEST"))
+                            :chart-container chart-container))))
 
     (div :class "ui container"
          (div :class "chart"

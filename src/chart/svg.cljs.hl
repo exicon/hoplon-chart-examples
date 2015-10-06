@@ -1,5 +1,6 @@
 (ns chart.svg
-  (:require [hoplon.svg :as svg :refer [rect line g]]))
+  (:require [hoplon.svg :as svg :refer [rect line g]]
+            [clojure.set :refer [union difference]]))
 
 (def colors
   (cycle
@@ -65,15 +66,15 @@
         max-value-digits (dec (count (str max-value)))
         max-value-mod (mod max-value 10)
         y-interval-value (cond (<= max-value-mod 4) (Math/pow 5 max-value-digits)
-                                      (>= max-value-mod 5) (Math/pow 10 max-value-digits))
+                               (>= max-value-mod 5) (Math/pow 10 max-value-digits))
         y-axis-value (+ max-value y-interval-value)
         y-labels (vec (range 0 y-axis-value y-interval-value))
         x-interval (/ x-max (count x-labels))
         y-interval (/ y-max (count y-labels))
         x-coordinates (vec (range 0 x-max x-interval))
         y-coordinates (vec (map-indexed
-                                    (fn [idx item]
-                                      (/ (* y-max (* idx y-interval-value)) y-axis-value)) y-labels)) ]
+                             (fn [idx item]
+                               (/ (* y-max (* idx y-interval-value)) y-axis-value)) y-labels)) ]
     {:x-offset x-offset
      :y-offset y-offset
      :x-max x-max
@@ -89,26 +90,35 @@
 
 (defn svg-path [points]
   (let [draft-line-str (str "M" (clojure.string/join ""
-                           (map #(if % (str "L " (:x %) "," (:y %)) "M") points)))]
+                                                     (map #(if % (str "L " (:x %) "," (:y %)) "M") points)))]
     (when points
       (clojure.string/replace
         (clojure.string/replace draft-line-str #"(M+)L" "M") #"(M+)$" " "))))
 
-(defn auto-scale-series [series scaled-axis]
-  (let [{:keys [y-max y-labels x-coordinates y-axis-value]} scaled-axis
-        y-formula #(/ (* % y-max) y-axis-value)
-        x-formula #(nth x-coordinates %)
-        points (when (not-empty x-coordinates)
-                        (map-indexed (fn [idx item]
-                                       (if item
-                                         (hash-map :x (x-formula idx)
-                                                   :y (y-formula item))
-                                         nil)) (:data series)))]
-    {:name (:name series)
-     :path (svg-path points)
-     :points points
-     :data  (:data series)
-     :color (country-color (:name series))}))
+(defn auto-scale-series [filtered-data scaled-axis]
+  (mapv (fn [series]
+
+          (let [{:keys [y-max y-labels x-coordinates y-axis-value]} scaled-axis
+                y-formula #(/ (* % y-max) y-axis-value)
+                x-formula #(nth x-coordinates %)
+                points (when (not-empty x-coordinates)
+                         (map-indexed (fn [idx item]
+                                        (if item
+                                          (hash-map :x (x-formula idx)
+                                                    :y (y-formula item))
+                                          nil)) (:data series)))]
+            {:name (:name series)
+             :path (svg-path points)
+             :points points
+             :data  (:data series)
+             :color (country-color (:name series))})) filtered-data))
+
+(defn symmetric-difference [s1 s2]
+  (union (difference s1 s2) (difference s2 s1)))
+
+(defn pick-from [original selected]
+  (update-in original [:series]
+             #(filterv (fn [series] (selected (:name series))) %)))
 
 (defelem tooltip [{:keys [pos] :as attrs} kids]
   ((div :class "ui basic small popup" (dissoc attrs :pos))
@@ -137,28 +147,29 @@
                        :css (:ct-grid css))))))
 
 (defelem draw-series [{:keys [scaled-series scaled-axis move-tooltip hide-tooltip]}]
-  (cell-let
-    [{:keys [name path points color data]} scaled-series
-     {:keys [x-offset y-max]} scaled-axis
-     ]
-    (g :transform (cell= (str "scale(1 -1) translate(" x-offset " " (* -1 y-max) ")"))
-        (svg/path :d path
-                  :css (cell= (merge
-                         (:ct-line css)
-                         {:stroke color})))
-        (loop-tpl :bindings [point points]
-                    (line :x1 (cell= (:x point))
-                          :x2 (cell= (:x point))
-                          :y1 (cell= (:y point))
-                          :y2 (cell= (:y point))
-                          :mouseenter #(move-tooltip (:x @point)
-                                                     (- @y-max (:y @point))
-                                                     (str @name " : " (nth @data
-                                                          (index-of (vec @points) @point))))
-                          :mouseout hide-tooltip
-                          :css (cell= (merge
-                                 (:ct-point css)
-                                 {:stroke (:color scaled-series)})))))))
+  (loop-tpl :bindings [series scaled-series]
+            (cell-let
+              [{:keys [name path points color data]} series
+               {:keys [x-offset y-max]} scaled-axis
+               ]
+              (g :transform (cell= (str "scale(1 -1) translate(" x-offset " " (* -1 y-max) ")"))
+                 (svg/path :d path
+                           :css (cell= (merge
+                                         (:ct-line css)
+                                         {:stroke color})))
+                 (loop-tpl :bindings [point points]
+                           (line :x1 (cell= (:x point))
+                                 :x2 (cell= (:x point))
+                                 :y1 (cell= (:y point))
+                                 :y2 (cell= (:y point))
+                                 :mouseenter #(move-tooltip (:x @point)
+                                                            (- @y-max (:y @point))
+                                                            (str @name " : " (nth @data
+                                                                                  (index-of (vec @points) @point))))
+                                 :mouseout hide-tooltip
+                                 :css (cell= (merge
+                                               (:ct-point css)
+                                               {:stroke (:color series)}))))))))
 
 (defelem draw-labels [{:keys [scaled-axis]}]
   (cell-let [{:keys [x-coordinates x-labels x-interval x-offset
@@ -166,26 +177,33 @@
             [(g :transform (cell= (str "scale(1 1) translate(" x-offset " " "0)"))
                 (loop-tpl :bindings [x x-coordinates]
                           (let [x-label #(if (>= % (count @x-labels)) "" (nth @x-labels %))]
-                            (svg/foreignObject :x x :y (cell= y-max) :height (cell= y-interval) :width (cell= x-interval)
+                            (svg/foreignObject :x x :y (cell= y-max) :height 30 :width (cell= x-interval)
                                                (span :css (:ct-label css) (x-label (index-of @x-coordinates @x)))))))
              (g  :transform "scale(1 1) translate( 10 -10 )"
                 (loop-tpl :bindings [y y-coordinates]
                           (let [y-reverse (reverse @y-labels)
-                                y-label #(if (>= % (count @y-labels)) "" (nth @y-labels %)) ]
+                                y-label-idx (cell= (index-of y-coordinates y))
+                                y-label (cell= (cond
+                                                 (>= y-label-idx (count y-labels)) ""
+                                                 (nil? y-label-idx) ""
+                                                 :else (nth y-labels y-label-idx)))]
                             (svg/foreignObject :x 10 :y (cell= (- y-max y))
                                                :width 30 :height 30
                                                (span :css (:ct-label css)
-                                                     (cell= (y-label (index-of y-coordinates y))))))))]))
+                                                     y-label)))))]))
 
 (defelem rectangle
   [{:keys [chart-container height width data example-series]
     :or {height "100%"
-         width "100%"}}]
+         width "100%"
+         default-country "Total"}}]
   (let [dimensions (prop-cell [(.-offsetWidth chart-container)
                                (.-offsetHeight chart-container)])
-        ;countries (cell= (mapv #(:name %) (:series data)))
-        scaled-axis (cell= (auto-scale-axis data dimensions))
-        scaled-series (cell= (auto-scale-series example-series scaled-axis))
+        countries (cell= (mapv #(:name %) (:series data)))
+        selected-data (cell #{"Total"})
+        filtered-data (cell= (pick-from data selected-data))
+        scaled-axis (cell= (auto-scale-axis filtered-data dimensions))
+        scaled-series (cell= (auto-scale-series (:series filtered-data) scaled-axis))
         tooltip-pos (cell nil)
         tooltip-value (cell "")
         move-tooltip (fn [x y value]
@@ -199,5 +217,14 @@
               (draw-grids :scaled-axis scaled-axis)
               (draw-series :scaled-axis scaled-axis :scaled-series scaled-series
                            :move-tooltip move-tooltip :hide-tooltip hide-tooltip)
-              (draw-labels :scaled-axis scaled-axis))]))
+              (draw-labels :scaled-axis scaled-axis))
+     (div :class "ui secondary compact menu"
+          (loop-tpl
+            :bindings [country countries]
+            ((a :class "item")
+             :click #(swap! selected-data symmetric-difference (conj #{} @country))
+             (i :class "icon"
+                :css (cell= {:background-color (country-color country)
+                             :opacity (if (selected-data country) 1 0.4)}))
+             country)))]))
 
