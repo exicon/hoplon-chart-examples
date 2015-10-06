@@ -193,11 +193,12 @@
                                                      y-label)))))]))
 
 (defelem rectangle
-  [{:keys [chart-container height width data example-series]
+  [{:keys [height width data example-series]
     :or {height "100%"
          width "100%"
          default-country "Total"}}]
-  (let [dimensions (prop-cell [(.-offsetWidth chart-container)
+  (let [chart-container (div :class "ct-chart ct-golden-section")
+        dimensions (prop-cell [(.-offsetWidth chart-container)
                                (.-offsetHeight chart-container)])
         countries (cell= (mapv #(:name %) (:series data)))
         selected-data (cell #{"Total"})
@@ -211,20 +212,22 @@
                          (reset! tooltip-pos [x y])
                          (reset! tooltip-value value)))
         hide-tooltip #(reset! tooltip-pos nil)]
-    [(tooltip :pos tooltip-pos
-              (span :class "ui header" (text tooltip-value)))
-     (svg/svg :width width :height height
-              (draw-grids :scaled-axis scaled-axis)
-              (draw-series :scaled-axis scaled-axis :scaled-series scaled-series
-                           :move-tooltip move-tooltip :hide-tooltip hide-tooltip)
-              (draw-labels :scaled-axis scaled-axis))
-     (div :class "ui secondary compact menu"
-          (loop-tpl
-            :bindings [country countries]
-            ((a :class "item")
-             :click #(swap! selected-data symmetric-difference (conj #{} @country))
-             (i :class "icon"
-                :css (cell= {:background-color (country-color country)
-                             :opacity (if (selected-data country) 1 0.4)}))
-             country)))]))
+    (div :class "ui container grid"
+         (chart-container
+           (tooltip :pos tooltip-pos
+                    (span :class "ui header" (text tooltip-value)))
+           (svg/svg :width width :height height
+                    (draw-grids :scaled-axis scaled-axis)
+                    (draw-series :scaled-axis scaled-axis :scaled-series scaled-series
+                                 :move-tooltip move-tooltip :hide-tooltip hide-tooltip)
+                    (draw-labels :scaled-axis scaled-axis)))
+         (div :class "ui secondary compact fluid menu twelve column doubling row"
+              (loop-tpl
+                :bindings [country countries]
+                ((a :class "colulmn item")
+                 :click #(swap! selected-data symmetric-difference (conj #{} @country))
+                 (i :class "icon"
+                    :css (cell= {:background-color (country-color country)
+                                 :opacity (if (selected-data country) 1 0.4)}))
+                 country))))))
 

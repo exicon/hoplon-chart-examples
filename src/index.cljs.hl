@@ -12,6 +12,24 @@
              :data [100 103 1200 809 650 137 1 9 2737]}
             {:name "AU"
              :data [5 nil 30 46 73 nil 25 25 nil 57]}
+            {:name "CN"
+             :data [0 10 20 30 389 50 60 70 80 90 100 198]}
+            {:name "HK"
+             :data [100 103 1200 809 650 137 1 9 2737]}
+            {:name "JP"
+             :data [5 nil 30 46 73 nil 25 25 nil 57]}
+            {:name "ES"
+             :data [0 10 20 30 389 50 60 70 80 90 100 198]}
+            {:name "FR"
+             :data [100 103 1200 809 650 137 1 9 2737]}
+            {:name "UK"
+             :data [5 nil 30 46 73 nil 25 25 nil 57]}
+            {:name "AG"
+             :data [0 10 20 30 389 50 60 70 80 90 100 198]}
+            {:name "IN"
+             :data [100 103 1200 809 650 137 1 9 2737]}
+            {:name "NZ"
+             :data [5 nil 30 46 73 nil 25 25 nil 57]}
             ]})
 
 (def point1 {:x 2 :y 3})
@@ -27,10 +45,7 @@
     (link :href "//cdn.jsdelivr.net/chartist.js/latest/chartist.min.css" :rel "stylesheet"))
   (body
     (div :class "ui container"
-         (let [chart-container (div :class "ct-chart ct-golden-section")]
-           (chart-container
-             (svg/rectangle :data chartist-data-example
-                            :chart-container chart-container))))
+         (svg/rectangle :data chartist-data-example))
 
     (div :class "ui container"
          (div :class "chart"
