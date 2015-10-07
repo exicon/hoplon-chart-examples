@@ -1,32 +1,7 @@
 (ns chart.svg
   (:require [hoplon.svg :as svg :refer [rect line g]]
-            [clojure.set :refer [union difference]]))
-
-(def colors
-  (cycle
-    [
-     "#d70206"
-     "#f05b4f"
-     "#f4c63d"
-     "#d17905"
-     "#453d3f"
-     "#59922b"
-     "#0544d3"
-     "#6b0392"
-     "#f05b4f"
-     "#dda458"
-     "#eacf7d"
-     "#86797d"
-     "#b2c326"
-     "#6188e2"
-     "#a748ca"
-     ]))
-
-(def full-countries-list
-  ["Total" "US" "AU"])
-
-(defn country-color [country]
-  ((into {} (map vector full-countries-list colors)) country "grey"))
+            [clojure.set :refer [union difference]]
+            [chart.utils :refer [colors country-color full-countries-list]]))
 
 (def css {:ct-grids {}
           :ct-grid {:stroke "rgba(0,0,0,.2)"
@@ -157,7 +132,8 @@
                                          (:ct-line css)
                                          {:stroke color})))
                  (loop-tpl :bindings [point points]
-                           (line :x1 (cell= (:x point))
+                           (line :toggle (cell= point)
+                                 :x1 (cell= (:x point))
                                  :x2 (cell= (:x point))
                                  :y1 (cell= (:y point))
                                  :y2 (cell= (:y point))
